@@ -1,0 +1,14 @@
+{
+  "name": "yanyaoer-plugins",
+  "owner": {
+    "name": "yanyaoer",
+    "url": "https://github.com/yanyaoer"
+  },
+  "plugins": [
+    {
+      "name": "research-devflow",
+      "source": ".",
+      "description": "拆解复杂任务为可并行执行的子任务，支持 Git Worktree 隔离开发"
+    }
+  ]
+}

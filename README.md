@@ -1,4 +1,4 @@
-# Research Plugin
+# Research DevFlow
 
 拆解复杂任务为可并行执行的子任务，支持 Git Worktree 隔离开发。
 
@@ -13,12 +13,44 @@
 
 ## 安装
 
-```bash
-# 添加到 Claude Code plugins
-claude plugins add ~/Projects/side/research-skill
+### 方式 1: 从 GitHub 安装（推荐）
 
-# 或从 GitHub 安装
-claude plugins add github:yanyaoer/research-skill
+```bash
+# 添加 marketplace
+/plugin marketplace add https://github.com/yanyaoer/research-devflow
+
+# 安装并启用
+/plugin install research-devflow@yanyaoer-plugins
+```
+
+### 方式 2: 本地安装
+
+```bash
+# 克隆仓库
+git clone https://github.com/yanyaoer/research-devflow ~/Projects/side/research-devflow
+
+# 添加本地 marketplace（指向包含 plugin 的目录）
+/plugin marketplace add ~/Projects/side/research-devflow
+```
+
+### 方式 3: 配置文件安装
+
+在 `~/.claude/settings.json` 中添加：
+
+```json
+{
+  "enabledPlugins": {
+    "research-devflow@yanyaoer-plugins": true
+  },
+  "extraKnownMarketplaces": {
+    "yanyaoer-plugins": {
+      "source": {
+        "source": "directory",
+        "path": "/path/to/research-devflow"
+      }
+    }
+  }
+}
 ```
 
 ## 使用
@@ -34,7 +66,7 @@ claude plugins add github:yanyaoer/research-skill
 ## 结构
 
 ```
-research-skill/
+research-devflow/
 ├── .claude-plugin/
 │   └── plugin.json       # Plugin 元数据
 ├── skills/
@@ -86,3 +118,7 @@ research-skill/
 ## License
 
 MIT
+
+## 推荐搭配
+
+- [claude-hud](https://github.com/jarrodwatts/claude-hud) - 状态栏显示任务进度，实时监控 Subagent 执行状态

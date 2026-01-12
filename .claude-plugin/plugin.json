@@ -1,0 +1,8 @@
+{
+  "name": "research",
+  "version": "1.0.0",
+  "description": "拆解复杂任务为可并行执行的子任务，支持 Git Worktree 隔离开发",
+  "author": "yanyaoer",
+  "keywords": ["research", "parallel", "task", "worktree"],
+  "repository": "https://github.com/yanyaoer/research-skill"
+}

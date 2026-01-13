@@ -1,6 +1,6 @@
 ---
 id: code-quality-rules
-version: "1.0"
+version: "1.1"
 updated_at: "2025-01-13"
 ---
 
@@ -9,12 +9,27 @@ updated_at: "2025-01-13"
 ## 支持的语言
 
 规则检查命令覆盖以下主流语言：
-- TypeScript/JavaScript (ts, js)
-- Python (py)
-- Rust (rust)
-- Java (java)
-- Kotlin (kotlin)
-- Go (go)
+
+| 语言 | 扩展名 | rg --type |
+|------|--------|-----------|
+| TypeScript/JavaScript | ts, tsx, js, jsx | ts, js |
+| Python | py | py |
+| Rust | rs | rust |
+| Go | go | go |
+| Java | java | java |
+| Kotlin | kt, kts | kotlin |
+| Swift | swift | swift |
+| C/C++ | c, cpp, cc, h, hpp | c, cpp |
+
+### 快捷 Glob 模式
+
+```bash
+# 全语言扫描
+CODE_GLOB='*.{ts,tsx,js,jsx,py,rs,go,java,kt,swift,c,cpp,cc,h,hpp}'
+
+# 使用示例
+rg "pattern" -g "$CODE_GLOB"
+```
 
 ## 规则格式说明
 
@@ -43,9 +58,9 @@ updated_at: "2025-01-13"
   review_action: 检查是否使用参数化查询
   postmortem_action: 追溯注入路径和攻击向量
   check_command: |
-    rg "execute\(.*\+|query\(.*\+|raw\(.*\+" --type py --type js --type ts --type java --type kotlin --type go
-    rg "executeQuery.*\$\{|\.query.*\$\{|format!.*SELECT|fmt\.Sprintf.*SELECT" --type ts --type js --type rust --type go
-    rg "createQuery\(.*\+|prepareStatement.*\+" --type java --type kotlin
+    rg "execute\(.*\+|query\(.*\+|raw\(.*\+|executeQuery.*\$\{|\.query.*\$\{" -g '*.{ts,js,py,java,kt,go,swift}'
+    rg "format!.*SELECT|fmt\.Sprintf.*SELECT" -g '*.{rs,go}'
+    rg "stringWithFormat.*SELECT|NSString.*SELECT" -g '*.{swift,m,mm}'
   fix_hint: 使用参数化查询或 ORM
 
 - id: S02
@@ -56,9 +71,9 @@ updated_at: "2025-01-13"
   review_action: 检查用户输入是否转义输出
   postmortem_action: 分析攻击载荷和影响范围
   check_command: |
-    rg "innerHTML\s*=|v-html|dangerouslySetInnerHTML" --type ts --type js
-    rg "document\.write\(" --type js --type ts
-    rg "html!|Html::raw|template\.HTML" --type rust --type go
+    rg "innerHTML\s*=|v-html|dangerouslySetInnerHTML|document\.write\(" -g '*.{ts,tsx,js,jsx}'
+    rg "html!|Html::raw" -g '*.rs'
+    rg "template\.HTML" -g '*.go'
   fix_hint: 使用 textContent 或框架的安全输出方式
 
 - id: S03
@@ -69,10 +84,13 @@ updated_at: "2025-01-13"
   review_action: 检查 shell 命令拼接
   postmortem_action: 还原命令执行路径
   check_command: |
-    rg "exec\(.*\+|spawn\(.*\+|system\(.*\+" --type py --type js --type ts --type java --type kotlin
-    rg "subprocess\.(run|call|Popen).*shell=True" --type py
-    rg "Runtime\.getRuntime\(\)\.exec|ProcessBuilder" --type java --type kotlin
-    rg "Command::new.*arg\(.*format!|exec\.Command" --type rust --type go
+    rg "exec\(.*\+|spawn\(.*\+|system\(.*\+" -g '*.{ts,js,py,java,kt,swift,c,cpp}'
+    rg "subprocess\.(run|call|Popen).*shell=True" -g '*.py'
+    rg "Runtime\.getRuntime\(\)\.exec|ProcessBuilder" -g '*.{java,kt}'
+    rg "Command::new.*format!|std::process::Command" -g '*.rs'
+    rg "exec\.Command|os/exec" -g '*.go'
+    rg "Process\(|NSTask|launchPath" -g '*.swift'
+    rg "popen|execvp|execl" -g '*.{c,cpp,cc}'
   fix_hint: 使用参数数组而非字符串拼接
 
 - id: S04
@@ -83,8 +101,8 @@ updated_at: "2025-01-13"
   review_action: 检查认证逻辑完整性
   postmortem_action: 还原绕过路径
   check_command: |
-    rg "isAuthenticated|isAuthorized|checkAuth|@PreAuthorize|@Secured" --type ts --type js --type py --type java --type kotlin
-    rg "middleware.*auth|#\[authorize\]|RequireAuth" --type go --type rust
+    rg "isAuthenticated|isAuthorized|checkAuth|@PreAuthorize|@Secured|RequireAuth" -g '*.{ts,js,py,java,kt,go,rs,swift}'
+    rg "middleware.*auth|#\[authorize\]" -g '*.{go,rs}'
   fix_hint: 确保所有敏感路由都有认证检查
 
 - id: S05
@@ -95,8 +113,8 @@ updated_at: "2025-01-13"
   review_action: 检查硬编码密钥和日志输出
   postmortem_action: 评估泄露范围和影响
   check_command: |
-    rg "(password|secret|key|token|api_key)\s*=\s*['\"][^'\"]+['\"]" -i --type py --type js --type ts --type java --type kotlin --type go --type rust
-    rg "console\.(log|info|debug).*password|print.*password|log\.(info|debug|warn).*password|println.*password" -i
+    rg "(password|secret|api_key|apikey|token)\s*[:=]\s*['\"][^'\"]{8,}['\"]" -i -g '*.{ts,js,py,java,kt,go,rs,swift,c,cpp}'
+    rg "(print|log|console)\w*\(.*password" -i -g '*.{ts,js,py,java,kt,go,rs,swift}'
   fix_hint: 使用环境变量或密钥管理服务
 ```
 
@@ -113,10 +131,13 @@ updated_at: "2025-01-13"
   review_action: 检查可能为 null/undefined 的变量使用
   postmortem_action: 追溯空值来源和传播路径
   check_command: |
-    rg "\.unwrap\(\)|\.expect\(" --type rust
-    rg "NullPointerException|\.get\(\)\." --type java --type kotlin
-    rg "Cannot read propert|undefined is not|null is not" --type ts --type js
-    rg "AttributeError: 'NoneType'" --type py
+    rg "\.unwrap\(\)|\.expect\(" -g '*.rs'
+    rg "NullPointerException|\.get\(\)\." -g '*.{java,kt}'
+    rg "Cannot read propert|undefined is not|null is not" -g '*.{ts,js}'
+    rg "AttributeError: 'NoneType'" -g '*.py'
+    rg "nil pointer|invalid memory address" -g '*.go'
+    rg "unexpectedly found nil|fatal error: unexpectedly found nil" -g '*.swift'
+    rg "nullptr|NULL|segmentation fault" -i -g '*.{c,cpp,cc}'
   fix_hint: 使用可选链(?.)、Option/Result 或显式空值检查
 
 - id: R02
@@ -127,8 +148,7 @@ updated_at: "2025-01-13"
   review_action: 检查数组索引和范围边界
   postmortem_action: 还原边界触发条件
   check_command: |
-    rg "\[.*\]" --type ts --type js --type py --type java --type kotlin --type go --type rust
-    rg "IndexOutOfBounds|index out of range|slice bounds" -i
+    rg "IndexOutOfBounds|index out of range|slice bounds|ArrayIndexOutOfBoundsException" -i -g '*.{ts,js,py,java,kt,go,rs,swift,c,cpp}'
   fix_hint: 添加边界检查，使用安全访问方法
 
 - id: R03
@@ -139,11 +159,13 @@ updated_at: "2025-01-13"
   review_action: 检查共享状态的并发访问
   postmortem_action: 还原竞态时序
   check_command: |
-    rg "async|await|Promise|setTimeout|setInterval" --type ts --type js
-    rg "threading|asyncio|concurrent\.futures" --type py
-    rg "synchronized|ReentrantLock|AtomicInteger" --type java --type kotlin
-    rg "go\s+func|sync\.Mutex|chan\s+" --type go
-    rg "Arc<Mutex|tokio::spawn|async fn" --type rust
+    rg "async|await|Promise\.|setTimeout|setInterval" -g '*.{ts,js}'
+    rg "threading|asyncio|concurrent\.futures" -g '*.py'
+    rg "synchronized|ReentrantLock|Atomic" -g '*.{java,kt}'
+    rg "go\s+func|sync\.(Mutex|RWMutex)|<-\s*chan" -g '*.go'
+    rg "Arc<Mutex|tokio::spawn|async fn" -g '*.rs'
+    rg "DispatchQueue|@MainActor|actor\s+" -g '*.swift'
+    rg "pthread_|std::mutex|std::thread" -g '*.{c,cpp,cc}'
   fix_hint: 使用锁、原子操作或不可变数据
 
 - id: R04
@@ -154,11 +176,11 @@ updated_at: "2025-01-13"
   review_action: 检查 try-catch 覆盖和错误处理
   postmortem_action: 分析异常传播和吞没
   check_command: |
-    rg "catch\s*\(\s*\w*\s*\)\s*\{\s*\}" --type ts --type js
-    rg "except:$|except Exception:$" --type py
-    rg "catch\s*\(.*\)\s*\{\s*\}" --type java --type kotlin
-    rg "if err != nil \{\s*\}" --type go
-    rg "\.unwrap_or\(\)" --type rust
+    rg "catch\s*\([^)]*\)\s*\{\s*\}" -g '*.{ts,js,java,kt,cpp}'
+    rg "except:\s*$|except Exception:\s*(pass|\.\.\.)" -g '*.py'
+    rg "if err != nil \{\s*\}" -g '*.go'
+    rg "\.unwrap_or\(\)|\.unwrap_or_default\(\)" -g '*.rs'
+    rg "catch\s*\{\s*\}" -g '*.swift'
   fix_hint: 记录错误详情，避免空 catch 块
 
 - id: R05
@@ -169,10 +191,12 @@ updated_at: "2025-01-13"
   review_action: 检查文件/连接是否正确关闭
   postmortem_action: 分析资源累积和系统影响
   check_command: |
-    rg "open\(|createConnection|createPool|new FileInputStream|new BufferedReader" --type py --type ts --type js --type java --type kotlin
-    rg "File::open|TcpStream::connect" --type rust
-    rg "os\.Open|sql\.Open|net\.Dial" --type go
-  fix_hint: 使用 try-finally、defer、use/with 或 RAII
+    rg "open\(|createConnection|createPool|new FileInputStream" -g '*.{py,ts,js,java,kt}'
+    rg "File::open|TcpStream::connect" -g '*.rs'
+    rg "os\.Open|sql\.Open|net\.Dial" -g '*.go'
+    rg "FileHandle|URLSession|InputStream" -g '*.swift'
+    rg "fopen|malloc|new\s+\w+\[" -g '*.{c,cpp,cc}'
+  fix_hint: 使用 try-finally、defer、use/with、RAII 或 ARC
 ```
 
 ---
@@ -188,7 +212,7 @@ updated_at: "2025-01-13"
   review_action: 检查循环内的数据库查询
   postmortem_action: 分析查询日志和性能数据
   check_command: |
-    rg "for.*\{" -A 5 | rg "\.find\(|\.query\(|SELECT|findById" --type ts --type js --type py --type java --type kotlin --type go --type rust
+    rg "for.*(find|query|fetch|select)" -i -g '*.{ts,js,py,java,kt,go,rs,swift}'
   fix_hint: 使用批量查询或 JOIN
 
 - id: P02
@@ -199,7 +223,7 @@ updated_at: "2025-01-13"
   review_action: 检查循环终止条件
   postmortem_action: 还原循环卡死条件
   check_command: |
-    rg "while\s*\(\s*true\s*\)|while\s*\(\s*1\s*\)|for\s*\(\s*;\s*;\s*\)|while True:|loop \{" --type ts --type js --type py --type java --type kotlin --type go --type rust
+    rg "while\s*\(\s*(true|1|YES)\s*\)|for\s*\(\s*;;\s*\)|while\s+True:|loop\s*\{" -g '*.{ts,js,py,java,kt,go,rs,swift,c,cpp}'
   fix_hint: 确保有明确的退出条件和超时机制
 
 - id: P03
@@ -210,9 +234,10 @@ updated_at: "2025-01-13"
   review_action: 检查事件监听器和定时器清理
   postmortem_action: 分析内存增长模式
   check_command: |
-    rg "addEventListener|setInterval|setTimeout|subscribe\(" --type ts --type js
-    rg "Box::leak|mem::forget|static mut" --type rust
-    rg "addObserver|NotificationCenter" --type java --type kotlin
+    rg "addEventListener|setInterval|subscribe\(" -g '*.{ts,js}'
+    rg "Box::leak|mem::forget|static mut" -g '*.rs'
+    rg "addObserver|NotificationCenter" -g '*.{java,kt,swift}'
+    rg "malloc|realloc|new\s+\w+\[" -g '*.{c,cpp,cc}'
   fix_hint: 组件卸载时清理监听器和定时器
 ```
 
@@ -229,8 +254,7 @@ updated_at: "2025-01-13"
   review_action: 检查硬编码的 URL、端口、路径
   postmortem_action: 分析配置错误影响
   check_command: |
-    rg "http://localhost|127\.0\.0\.1|:3000|:8080|:8000" --type ts --type js --type py --type java --type kotlin --type go --type rust
-    rg "hardcoded|HARDCODED|TODO.*config" -i
+    rg "http://localhost|127\.0\.0\.1|:3000|:8080|:8000" -g '*.{ts,js,py,java,kt,go,rs,swift,c,cpp}'
   fix_hint: 使用环境变量或配置文件
 
 - id: M02
@@ -241,7 +265,7 @@ updated_at: "2025-01-13"
   review_action: 检查未命名的数字常量
   postmortem_action: N/A
   check_command: |
-    rg "=\s*\d{2,}[^0-9]|>\s*\d{2,}[^0-9]|<\s*\d{2,}[^0-9]" --type ts --type js --type py --type java --type kotlin --type go --type rust
+    rg "[=<>]\s*\d{3,}[^0-9]" -g '*.{ts,js,py,java,kt,go,rs,swift,c,cpp}'
   fix_hint: 提取为命名常量
 
 - id: M03
@@ -252,10 +276,10 @@ updated_at: "2025-01-13"
   review_action: 检查函数行数是否超过阈值
   postmortem_action: N/A
   check_command: |
-    # 使用 ast-grep 针对各语言查找函数
     ast-grep -p 'function $NAME($$$) { $$$BODY$$$ }' --lang typescript
     ast-grep -p 'fn $NAME($$$) { $$$BODY$$$ }' --lang rust
     ast-grep -p 'func $NAME($$$) { $$$BODY$$$ }' --lang go
+    ast-grep -p 'func $NAME($$$) { $$$BODY$$$ }' --lang swift
   fix_hint: 拆分为多个职责单一的小函数
 ```
 

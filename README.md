@@ -1,32 +1,53 @@
 # Research DevFlow
 
-Claude Code 开发工作流插件套件，将开发流程各环节抽象为 Skill 工具，通过知识沉淀提高团队效率。
+将传统软件工程的规划、开发、测试、发布流程抽象为 AI 可执行的自动化任务。
+
+每个任务执行时自动检索历史沉淀的故障复盘、代码规则、技术决策等知识，
+
+避免重复踩坑，持续提升团队交付效率和质量。
+
+## TL;DR
+
+```
+规划设计 ──► 开发实现 ──► 质量保障 ──► 发布运维 ──► 知识沉淀
+   │            │            │            │            │
+/research    /review     /security    /release    /postmortem
+/onboarding  /tech-debt  /test-strategy /dependency
+```
+
+| 阶段 | Skill | 一句话用法 |
+|------|-------|-----------|
+| 规划 | `/research <任务描述>` | 拆解任务，并行开发 |
+| 审查 | `/review` | 检查暂存区代码质量 |
+| 复盘 | `/postmortem` | 分析 bug 根因，沉淀经验 |
+| 债务 | `/tech-debt scan` | 扫描 TODO/FIXME/HACK |
+| 测试 | `/test-strategy <module>` | 生成模块测试策略 |
+| 安全 | `/security-scan` | 检查注入/泄露风险 |
+| 依赖 | `/dependency audit` | 检查依赖漏洞 |
+| 发布 | `/release changelog` | 生成变更日志 |
+| 上手 | `/onboarding` | 生成项目指南 |
 
 ## 安装
-
-### 方式 1: 从 GitHub 安装（推荐）
 
 ```bash
 # 添加 marketplace
 /plugin marketplace add https://github.com/yanyaoer/research-devflow
 
-# 安装并启用
+# 安装
 /plugin install research-devflow@yanyaoer-plugins
 ```
 
-### 方式 2: 本地安装
+<details>
+<summary>其他安装方式</summary>
+
+### 本地安装
 
 ```bash
-# 克隆仓库
 git clone https://github.com/yanyaoer/research-devflow ~/Projects/research-devflow
-
-# 添加本地 marketplace
 /plugin marketplace add ~/Projects/research-devflow
 ```
 
-### 方式 3: 配置文件安装
-
-在 `~/.claude/settings.json` 中添加：
+### 配置文件
 
 ```json
 {
@@ -35,82 +56,213 @@ git clone https://github.com/yanyaoer/research-devflow ~/Projects/research-devfl
   },
   "extraKnownMarketplaces": {
     "yanyaoer-plugins": {
-      "source": {
-        "source": "directory",
-        "path": "/path/to/research-devflow"
-      }
+      "source": { "source": "directory", "path": "/path/to/research-devflow" }
     }
   }
 }
 ```
 
-## Skills 概览
+</details>
 
-### 开发核心流程
+---
 
-| Skill | 命令 | 用途 |
+## 最佳实践
+
+### 1. 积累项目资产，加速迭代
+
+**目标**: 让每次开发都能复用历史经验，避免重复踩坑。
+
+```bash
+# 开发完成后，审查代码
+/review
+
+# 发现 bug 后，复盘根因
+/postmortem
+
+# 定期扫描技术债务
+/tech-debt scan
+```
+
+**资产沉淀结构**:
+```
+.claude/
+├── postmortem/           # 事故复盘 → 避免重蹈覆辙
+│   └── 250113-auth-bug/
+│       └── REPORT.md     # 根因、修复、教训
+├── reviews/              # 审查记录 → 追溯决策
+├── tech-debt/            # 债务清单 → 持续改进
+└── shared_files/         # 任务上下文 → 恢复工作
+```
+
+**迭代复用**:
+```bash
+# review 时自动检索相关 postmortem
+/review --pr 123
+# → 发现: 本次修改涉及 src/auth/，关联历史问题 250113-auth-bug
+
+# 新任务自动关联历史上下文
+/research 优化认证性能
+# → 加载: 相关 postmortem 和 tech-debt 记录
+```
+
+---
+
+### 2. 新项目规划与架构设计
+
+**目标**: 从 0 到 1 建立项目结构，沉淀关键决策。
+
+#### Step 1: 拆解大任务
+
+```bash
+/research 搭建电商后台系统
+```
+
+自动生成任务结构:
+```
+.claude/shared_files/250113-ecommerce-backend/
+├── task-status.json      # 任务状态追踪
+├── context-common.md     # 技术选型、架构约定
+├── context-p0-auth.md    # 子任务: 认证模块
+├── context-p1-product.md # 子任务: 商品模块
+└── context-p2-order.md   # 子任务: 订单模块
+```
+
+#### Step 2: 并行开发
+
+```bash
+# 各子任务独立分支开发
+./scripts/setup-worktrees.sh .claude/shared_files/250113-ecommerce-backend
+
+# 完成后合并
+./scripts/merge.sh .claude/shared_files/250113-ecommerce-backend
+```
+
+#### Step 3: 安全与质量检查
+
+```bash
+# 代码审查
+/review
+
+# 安全扫描
+/security-scan
+
+# 测试策略
+/test-strategy src/
+```
+
+#### Step 4: 沉淀架构决策
+
+在开发过程中遇到的重要决策，通过 postmortem 或独立文档记录:
+- 为什么选择 JWT 而不是 Session？
+- 为什么使用 PostgreSQL 而不是 MongoDB？
+- 微服务边界如何划分？
+
+---
+
+### 3. 新人快速上手
+
+**目标**: 新人 Day 1 即可产出，降低质量风险。
+
+#### 生成上手指南
+
+```bash
+/onboarding
+```
+
+自动聚合:
+- 项目结构和技术栈
+- 关键架构决策 (ADR)
+- 常见问题 (来自 postmortem)
+- 开发规范和检查命令
+
+#### 新人开发流程
+
+```bash
+# 1. 阅读上手指南
+cat .claude/onboarding/GUIDE.md
+
+# 2. 领取任务后，查看相关上下文
+/research --list  # 查看进行中的任务
+
+# 3. 提交前自检
+/review --staged  # 代码审查
+/security-scan    # 安全检查
+
+# 4. 遇到问题，查阅历史
+rg "关键词" .claude/postmortem/  # 搜索历史问题
+```
+
+#### 质量保障闭环
+
+```
+新人提交 PR
+     │
+     ▼
+/review ──► 发现风险 ──► 关联 postmortem ──► 学习历史教训
+     │
+     ▼
+通过检查 ──► 合并 ──► 积累新的审查记录
+```
+
+---
+
+## Skills 详情
+
+### 开发核心
+
+| Skill | 命令 | 说明 |
 |-------|------|------|
-| [research](skills/research/) | `/research` | 任务拆解与并行开发 |
-| [postmortem](skills/postmortem/) | `/postmortem` | 事故复盘与根因分析 |
-| [review](skills/review/) | `/review` | 代码审查辅助 |
+| [research](skills/research/) | `/research <query>` | 任务拆解，并行开发 |
+| [postmortem](skills/postmortem/) | `/postmortem` | 事故复盘，根因分析 |
+| [review](skills/review/) | `/review [target]` | 代码审查，风险检测 |
 
 ### 质量保障
 
-| Skill | 命令 | 用途 |
+| Skill | 命令 | 说明 |
 |-------|------|------|
-| [tech-debt](skills/tech-debt/) | `/tech-debt` | 技术债务追踪 |
-| [test-strategy](skills/test-strategy/) | `/test-strategy` | 测试策略生成 |
-| [security-scan](skills/security-scan/) | `/security-scan` | 安全检查 |
+| [tech-debt](skills/tech-debt/) | `/tech-debt scan` | 债务追踪，清理提醒 |
+| [test-strategy](skills/test-strategy/) | `/test-strategy <module>` | 测试策略，覆盖分析 |
+| [security-scan](skills/security-scan/) | `/security-scan` | 安全扫描，漏洞检测 |
 
 ### 持续改进
 
-| Skill | 命令 | 用途 |
+| Skill | 命令 | 说明 |
 |-------|------|------|
-| [dependency](skills/dependency/) | `/dependency` | 依赖管理与漏洞检查 |
-| [release](skills/release/) | `/release` | Changelog 与发布说明 |
-| [onboarding](skills/onboarding/) | `/onboarding` | 新人上手指南 |
-
-## Skill 联动
-
-```
-research ──────────────────────────────┐
-    │                                  │
-    ▼                                  ▼
-postmortem ◄──────── review ──────► tech-debt
-    │                   │
-    ▼                   ▼
-test-strategy    security-scan
-                       │
-                       ▼
-              RULES-CODE-QUALITY
-                       │
-    ┌──────────────────┴──────────────────┐
-    ▼                                      ▼
-dependency ──────► release ──────► onboarding
-```
+| [dependency](skills/dependency/) | `/dependency audit` | 依赖分析，漏洞检查 |
+| [release](skills/release/) | `/release changelog` | 变更日志，发布说明 |
+| [onboarding](skills/onboarding/) | `/onboarding` | 上手指南，知识聚合 |
 
 ## 共享资源
 
 | 文件 | 说明 |
 |------|------|
 | [docs/META-SCHEMA.md](docs/META-SCHEMA.md) | 统一文档元信息格式 |
-| [docs/RULES-CODE-QUALITY.md](docs/RULES-CODE-QUALITY.md) | 代码质量检查规则 |
+| [docs/RULES-CODE-QUALITY.md](docs/RULES-CODE-QUALITY.md) | 代码质量规则 (15 条，9 种语言) |
 | [scripts/rule_query.py](scripts/rule_query.py) | 规则查询工具 |
 
-## 知识沉淀目录
+## 依赖工具
 
+Skills 使用以下工具进行代码分析，建议提前安装：
+
+```bash
+# macOS (Homebrew)
+brew install ripgrep fd ast-grep jq
+
+# Ubuntu/Debian
+sudo apt install ripgrep fd-find jq
+# ast-grep 需要 cargo 安装
+cargo install ast-grep
+
+# Arch Linux
+sudo pacman -S ripgrep fd ast-grep jq
 ```
-.claude/
-├── shared_files/     # research 任务上下文
-├── postmortem/       # 事故复盘报告
-├── reviews/          # 代码审查记录
-├── tech-debt/        # 技术债务报告
-├── test-strategy/    # 测试策略文档
-├── security-scan/    # 安全扫描报告
-├── dependency/       # 依赖分析报告
-├── release/          # 发布说明
-└── onboarding/       # 上手指南
-```
+
+| 工具 | 用途 | 必需 |
+|------|------|------|
+| [ripgrep](https://github.com/BurntSushi/ripgrep) (rg) | 代码搜索、规则检查 | ✓ |
+| [fd](https://github.com/sharkdp/fd) | 快速文件查找 | ✓ |
+| [ast-grep](https://github.com/ast-grep/ast-grep) | AST 结构搜索 | 推荐 |
+| [jq](https://github.com/jqlang/jq) | JSON 处理 | 推荐 |
 
 ## 推荐搭配
 

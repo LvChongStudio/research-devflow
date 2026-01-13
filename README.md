@@ -1,15 +1,6 @@
 # Research DevFlow
 
-拆解复杂任务为可并行执行的子任务，支持 Git Worktree 隔离开发。
-
-## 功能特性
-
-- **任务拆解**: 将复杂任务分解为独立的子任务
-- **并行执行**: 支持多个 Subagent 后台并行执行
-- **Git Worktree**: 每个子任务在独立分支开发，避免冲突
-- **状态追踪**: task-status.json 记录任务进度
-- **系统通知**: 任务完成时发送 macOS 通知
-- **自动合并**: 按完成顺序合并分支，处理冲突
+Claude Code 开发工作流插件套件，将开发流程各环节抽象为 Skill 工具，通过知识沉淀提高团队效率。
 
 ## 安装
 
@@ -27,10 +18,10 @@
 
 ```bash
 # 克隆仓库
-git clone https://github.com/yanyaoer/research-devflow ~/Projects/side/research-devflow
+git clone https://github.com/yanyaoer/research-devflow ~/Projects/research-devflow
 
-# 添加本地 marketplace（指向包含 plugin 的目录）
-/plugin marketplace add ~/Projects/side/research-devflow
+# 添加本地 marketplace
+/plugin marketplace add ~/Projects/research-devflow
 ```
 
 ### 方式 3: 配置文件安装
@@ -53,72 +44,78 @@ git clone https://github.com/yanyaoer/research-devflow ~/Projects/side/research-
 }
 ```
 
-## 使用
+## Skills 概览
 
-```bash
-# 调研新方案，创建子任务
-/research <query>
+### 开发核心流程
 
-# 选择已有任务或新建
-/research
-```
+| Skill | 命令 | 用途 |
+|-------|------|------|
+| [research](skills/research/) | `/research` | 任务拆解与并行开发 |
+| [postmortem](skills/postmortem/) | `/postmortem` | 事故复盘与根因分析 |
+| [review](skills/review/) | `/review` | 代码审查辅助 |
 
-## 结构
+### 质量保障
 
-```
-research-devflow/
-├── .claude-plugin/
-│   └── plugin.json       # Plugin 元数据
-├── skills/
-│   └── research/
-│       ├── SKILL.md      # 主 Skill 文件
-│       ├── WORKFLOW.md   # 详细工作流程
-│       ├── EXECUTION-MODES.md  # 执行模式详解
-│       └── TEMPLATES.md  # 文件模板
-├── scripts/
-│   ├── setup-worktrees.sh  # 初始化 worktree
-│   ├── merge.sh            # 合并分支
-│   └── notify.sh           # 发送通知
-└── README.md
-```
+| Skill | 命令 | 用途 |
+|-------|------|------|
+| [tech-debt](skills/tech-debt/) | `/tech-debt` | 技术债务追踪 |
+| [test-strategy](skills/test-strategy/) | `/test-strategy` | 测试策略生成 |
+| [security-scan](skills/security-scan/) | `/security-scan` | 安全检查 |
 
-## 工作流
+### 持续改进
+
+| Skill | 命令 | 用途 |
+|-------|------|------|
+| [dependency](skills/dependency/) | `/dependency` | 依赖管理与漏洞检查 |
+| [release](skills/release/) | `/release` | Changelog 与发布说明 |
+| [onboarding](skills/onboarding/) | `/onboarding` | 新人上手指南 |
+
+## Skill 联动
 
 ```
-1. /research <query>     调研任务
-2. 创建 context 文件      写入背景和实现步骤
-3. setup-worktrees.sh    创建独立工作分支
-4. 并行执行子任务         在各自 worktree 中开发
-5. 完成通知              每个任务完成时通知
-6. merge.sh              合并所有分支
+research ──────────────────────────────┐
+    │                                  │
+    ▼                                  ▼
+postmortem ◄──────── review ──────► tech-debt
+    │                   │
+    ▼                   ▼
+test-strategy    security-scan
+                       │
+                       ▼
+              RULES-CODE-QUALITY
+                       │
+    ┌──────────────────┴──────────────────┐
+    ▼                                      ▼
+dependency ──────► release ──────► onboarding
 ```
 
-## 执行模式
+## 共享资源
 
-| 模式 | 适用场景 |
-|------|----------|
-| Subagent 后台并行 | 无依赖的独立任务 |
-| 多终端手动启动 | 需要 MCP 或交互 |
-| 当前进程顺序 | 简单任务或强依赖 |
+| 文件 | 说明 |
+|------|------|
+| [docs/META-SCHEMA.md](docs/META-SCHEMA.md) | 统一文档元信息格式 |
+| [docs/RULES-CODE-QUALITY.md](docs/RULES-CODE-QUALITY.md) | 代码质量检查规则 |
+| [scripts/rule_query.py](scripts/rule_query.py) | 规则查询工具 |
 
-## 脚本
+## 知识沉淀目录
 
-```bash
-# 初始化 worktree
-./scripts/setup-worktrees.sh .claude/shared_files/<task>
-
-# 任务通知
-./scripts/notify.sh done p0 "任务名" "修改内容"
-./scripts/notify.sh fail p0 "任务名" "错误信息"
-
-# 合并分支
-./scripts/merge.sh .claude/shared_files/<task>
 ```
-
-## License
-
-MIT
+.claude/
+├── shared_files/     # research 任务上下文
+├── postmortem/       # 事故复盘报告
+├── reviews/          # 代码审查记录
+├── tech-debt/        # 技术债务报告
+├── test-strategy/    # 测试策略文档
+├── security-scan/    # 安全扫描报告
+├── dependency/       # 依赖分析报告
+├── release/          # 发布说明
+└── onboarding/       # 上手指南
+```
 
 ## 推荐搭配
 
 - [claude-hud](https://github.com/jarrodwatts/claude-hud) - 状态栏显示任务进度，实时监控 Subagent 执行状态
+
+## License
+
+MIT

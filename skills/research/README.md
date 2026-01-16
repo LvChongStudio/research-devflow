@@ -2,6 +2,17 @@
 
 拆解复杂任务为可并行执行的子任务，支持 Git Worktree 隔离开发。
 
+## ⚠️ 强制执行规则
+
+**执行任何任务前，必须完成以下门禁检查点：**
+
+1. **[GATE-1]** 创建任务目录 `.claude/shared_files/<yymmdd-task-slug>/`
+2. **[GATE-2]** 创建 `task-status.json`
+3. **[GATE-3]** 创建 `context-common.md`
+4. **[GATE-4]** 使用 AskUserQuestion 确认执行方式
+
+**🚫 禁止在未完成门禁检查前启动 Task agent 进行调研或开发**
+
 ## 功能特性
 
 - **任务拆解**: 将复杂任务分解为独立的子任务
@@ -41,11 +52,14 @@ scripts/
 
 ```
 1. /research <query>     调研任务
-2. 创建 context 文件      写入背景和实现步骤
-3. setup-worktrees.sh    创建独立工作分支
-4. 并行执行子任务         在各自 worktree 中开发
-5. 完成通知              每个任务完成时通知
-6. merge.sh              合并所有分支
+2. [GATE-1] 创建任务目录
+3. [GATE-2] 创建 task-status.json
+4. [GATE-3] 创建 context 文件
+5. [GATE-4] 询问用户执行方式
+6. setup-worktrees.sh    创建独立工作分支（开发型任务）
+7. 并行执行子任务         在各自 worktree 中开发
+8. 完成通知              每个任务完成时通知
+9. merge.sh              合并所有分支
 ```
 
 ## 执行模式

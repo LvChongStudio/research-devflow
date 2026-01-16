@@ -1,5 +1,23 @@
 # Research 详细工作流程
 
+## ⚠️ 强制执行规则
+
+**在执行任何调研或开发任务之前，必须完成以下门禁检查点：**
+
+| 门禁 | 验证条件 | 验证命令 |
+|------|----------|----------|
+| **GATE-1** | 任务目录已创建 | `ls -la .claude/shared_files/<yymmdd-task-slug>/` |
+| **GATE-2** | task-status.json 已写入 | `cat .claude/shared_files/<yymmdd-task-slug>/task-status.json \| jq '.tasks \| length'` |
+| **GATE-3** | context-common.md 已写入 | `head -20 .claude/shared_files/<yymmdd-task-slug>/context-common.md` |
+| **GATE-4** | 用户已确认执行方式 | 使用 AskUserQuestion 询问 |
+
+**🚫 禁止行为：**
+- 禁止在未创建 task-status.json 前启动 Task agent 进行调研
+- 禁止跳过 AskUserQuestion 直接执行子任务
+- 禁止使用 Task agent 做"快速调研"而不记录到任务文档
+
+---
+
 ## Git Worktree 隔离开发
 
 ### 为什么使用 Worktree
@@ -177,17 +195,17 @@ osascript -e 'display notification "所有任务已完成并合并！" with titl
 
 ### Step 1: 分析任务
 
-1. 使用 EnterPlanMode 进入计划模式
-2. 探索代码库，理解问题背景
-3. 如有 additionalDirectories，参考相关项目实现
-4. 识别可并行执行的子任务
+1. 探索代码库，理解问题背景
+2. 如有 additionalDirectories，参考相关项目实现
+3. 识别可并行执行的子任务
+4. **判断任务类型**（调研型 / 开发型 / 混合型）
 
 **子任务拆分原则**:
 - 每个子任务 1-2 小时可完成
 - 最小化依赖关系
 - 明确的输入输出
 
-### Step 2: 创建共享文件
+### Step 2: [GATE-1] 创建共享文件目录
 
 **目录命名规范**: 使用 kebab-case，如 `optimize-long-sentence-input`
 
@@ -195,13 +213,23 @@ osascript -e 'display notification "所有任务已完成并合并！" with titl
 mkdir -p .claude/shared_files/<yymmdd-task-slug>
 ```
 
-### Step 3: 写入文件
+**验证**: `ls -la .claude/shared_files/<yymmdd-task-slug>/`
 
-**执行顺序**（严格遵循）:
+### Step 3: [GATE-2] 写入 task-status.json
 
-1. 先写 `task-status.json`
-2. 再写 `context-common.md`
-3. 最后写各 `context-pX-xxx.md`
+```bash
+# 验证
+cat .claude/shared_files/<yymmdd-task-slug>/task-status.json | jq '.tasks | length'
+```
+
+### Step 4: [GATE-3] 写入 context-common.md
+
+```bash
+# 验证
+head -20 .claude/shared_files/<yymmdd-task-slug>/context-common.md
+```
+
+### Step 5: 写入各 context-pX-xxx.md
 
 **context-pX-xxx.md 模板**:
 
@@ -253,9 +281,17 @@ mkdir -p .claude/shared_files/<yymmdd-task-slug>
 - [ ] Git 提交
 ```
 
-### Step 4: 询问执行方式
+### Step 6: 创建 Git Worktree（开发型任务）
 
-使用 AskUserQuestion 工具，提供以下选项:
+如果是开发型或混合型任务，需要创建 worktree：
+
+```bash
+./scripts/setup-worktrees.sh .claude/shared_files/<yymmdd-task-slug>
+```
+
+### Step 7: [GATE-4] 询问执行方式
+
+**必须使用 AskUserQuestion 工具**，提供以下选项:
 
 ```
 header: "执行方式"
@@ -269,11 +305,11 @@ options:
     description: "按依赖顺序逐个执行"
 ```
 
-### Step 5: 执行任务
+### Step 8: 执行任务
 
 根据用户选择执行。详见 [EXECUTION-MODES.md](EXECUTION-MODES.md)
 
-### Step 6: 完成通知
+### Step 9: 完成通知
 
 每个子任务完成后:
 

@@ -13,8 +13,9 @@
 
 ## 共享规则引用
 
-本 skill 使用以下共享规则进行代码检查：
-- [代码质量规则](../../docs/RULES-CODE-QUALITY.md)
+本 skill 使用以下共享规则：
+- [代码质量规则](../../docs/RULES-CODE-QUALITY.md): 用于代码检查
+- [LSP 配置指南](../../docs/common-lsp.md): 用于辅助分析
 
 ### 加载规则
 
@@ -83,7 +84,11 @@ rg "keywords:.*<keyword>" .claude/postmortem/*/REPORT.md
 
 ### Step 4: 逐文件执行检查
 
-对每个变更文件，执行规则的 check_command：
+对每个变更文件，执行规则的 check_command。
+
+**LSP 辅助建议**: 在检查复杂逻辑时，优先使用 LSP 工具 (`definition`, `references`) 评估影响。要求**至少追踪上下游各 2 层**调用关系，以确保覆盖潜在副作用。
+
+降级使用 `ast-grep` 或 `grep`。
 
 ```bash
 # 获取规则的检查命令并执行

@@ -264,6 +264,58 @@ sudo pacman -S ripgrep fd ast-grep jq
 | [ast-grep](https://github.com/ast-grep/ast-grep) | AST 结构搜索 | 推荐 |
 | [jq](https://github.com/jqlang/jq) | JSON 处理 | 推荐 |
 
+## Claude Code Extra Configuration
+
+为了启用高级代码智能分析 (Code Intelligence) 和 LSP 支持，提升 `research`、`review` 和 `postmortem` 的效果，建议添加以下 LSP 配置。
+
+### 1. LSP Plugin 安装
+
+对于大多数语言，使用 Claude Code Plugin 即可一键安装：
+
+```bash
+# Go
+/plugin add gopls-lsp
+
+# Python
+/plugin add pyright-lsp
+
+# TypeScript / JavaScript
+/plugin add typescript-lsp
+
+# Rust
+/plugin add rust-analyzer-lsp
+```
+
+*注意：上述插件依赖系统 PATH 中已安装对应的 Language Server CLI (如 `gopls`, `pyright`, `rust-analyzer`)。*
+
+### 2. Java 支持 (jdtls)
+
+Java 支持需要手动配置 `jdtls`。请将以下内容添加到你的 `.claude/settings.json`：
+
+```json
+{
+  "lsp": {
+    "java": {
+      "command": "/path/to/jdtls",
+      "args": [
+        "-data", "/tmp/jdtls-workspace"
+      ],
+      "rootMarkers": ["pom.xml", "build.gradle", "build.gradle.kts", ".project"],
+      "initializationOptions": {
+        "settings": {
+          "java": {
+            "home": "/path/to/jdk-home",
+            "format": { "enabled": true }
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+更多配置详情请参考 [LSP 配置指南](docs/common-lsp.md)。
+
 ## 推荐搭配
 
 - [claude-hud](https://github.com/jarrodwatts/claude-hud) - 状态栏显示任务进度，实时监控 Subagent 执行状态

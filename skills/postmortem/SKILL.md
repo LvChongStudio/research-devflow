@@ -17,14 +17,16 @@ description: "分析 bug/fix 相关提交，生成事故复盘报告。使用场
 
 ```
 Task Progress:
+- [ ] 0. 环境与工具检查 (LSP/Linter)
 - [ ] 1. 解析参数，确定分析模式
 - [ ] 2. 获取待分析的 commit 列表
 - [ ] 3. 检查 jira_issue_analyzer 可用性（如有 Jira ID）
 - [ ] 4. 提取 Jira 信息（如适用）
 - [ ] 5. 分析代码变更（逐行追踪）
+- [ ] 5a. 回溯引入问题的 Commit (Root Cause Backtracking)
 - [ ] 6. 分析函数调用链和影响范围
 - [ ] 7. 进行安全性和健壮性评估
-- [ ] 8. 综合分析生成事故报告
+- [ ] 8. 综合分析生成事故报告 (区分主要/次要原因)
 - [ ] 9. 总结经验教训和改进建议
 - [ ] 10. 写入报告文件
 ```
@@ -88,8 +90,9 @@ jira_issue_analyzer:root-cause <jira-id>
 
 ## 共享规则引用
 
-本 skill 使用以下共享规则进行根因分类：
-- [代码质量规则](../../docs/RULES-CODE-QUALITY.md)
+本 skill 使用以下共享规则：
+- [代码质量规则](../../docs/RULES-CODE-QUALITY.md): 用于根因分类
+- [LSP 配置指南](../../docs/common-lsp.md): 用于环境检查和工具配置
 
 ### 加载规则
 
@@ -111,6 +114,18 @@ python scripts/rule_query.py --query postmortem --category security --format jso
 
 ## 代码分析流程
 
+### Step 0: 环境与工具检查
+
+**LSP 状态检查**:
+
+```bash
+# 检查 settings.json 中是否启用了相关 plugin
+grep -E "gopls-lsp|pyright-lsp|typescript-lsp|rust-analyzer-lsp|mcp-java" .claude/settings.json .claude/settings.local.json 2>/dev/null
+```
+
+- **已启用**: 使用 `/list-tools` 确认工具可用。
+- **未启用**: 请参考 [README 安装指南](../../README.md#claude-code-extra-configuration) 进行安装。
+
 ### Step 1: 提取变更信息
 
 ```bash
@@ -121,7 +136,11 @@ git show <commit-id> -p --no-color
 
 ### Step 2: 逐行追踪
 
-对每个修改的文件：
+对每个修改的文件，优先使用 LSP 工具理解上下文，准确度优于 grep。
+
+**工具优先级**:
+1. **LSP**: 使用 `definition` 查看函数实现，`references` 评估影响，`hover` 确认类型。
+2. **CLI**: 降级使用 `git grep` 或 `ast-grep`。
 
 ```bash
 # 查看文件修改历史
@@ -131,12 +150,35 @@ git log --oneline -p -S "<changed-function-name>" -- <file>
 git blame -L <start>,<end> <file>
 ```
 
+### Step 2.5: 回溯根因 (Root Cause Backtracking)
+
+定位到 Fix 代码所修改的原始逻辑后，需要找到是谁、在什么 commit 中引入了这段问题代码。
+
+```bash
+# 1. 找到 fix commit 的 parent commit（即问题存在的状态）
+git rev-parse <fix-commit>^
+
+# 2. 在 parent commit 中对被修改行进行 blame
+git blame <parent-commit> -L <start>,<end> -- <file>
+```
+
+对于识别出的 "Trying-to-fix" 或 "引入 Bug" 的 commit (Introducing Commit)：
+1. 查看该 commit 的提交信息：`git show -s <intro-commit>`
+2. 查看该 commit 的完整变更：`git show <intro-commit>`
+3. 分析当时这样写的意图（是设计缺陷还是疏忽？）
+
+这用于区分报告中的 `primary_cause` (根本原因) 和 `secondary_causes` (诱因)。
+
 ### Step 3: 函数调用链分析
 
-识别所有被修改的函数，分析：
-- 该函数被哪些地方调用（上游影响）
-- 该函数调用了哪些其他函数（下游依赖）
-- 修改是否影响函数签名或返回值
+识别所有被修改的函数，优先使用 LSP 工具分析上下游依赖，准确性显著优于 grep。
+
+**LSP 方式 (推荐)**:
+1. 对修改的函数名使用 `references` 查找所有上游调用点。
+2. 对函数体内调用的外部函数使用 `definition` 理解下游依赖。
+
+**Regex/AST 方式 (降级)**:
+如果 LSP 不可用，使用 ast-grep 或 grep：
 
 ```bash
 # 使用 ast-grep 或 grep 查找调用点
@@ -212,10 +254,19 @@ refs:
 # === Postmortem 特有字段 ===
 severity: P1
 category: security
-root_cause:
+# === Postmortem 特有字段 ===
+severity: P1
+category: security
+primary_cause:
   type: race_condition
-  pattern: "async token refresh without lock"
-  matched_rules: ["R03"]
+  summary: "Token 刷新逻辑在并发请求下未加锁，导致旧 Token 失效后新请求仍使用旧 Token"
+  introducing_commit: "abc1234 (2024-11-20)"
+secondary_causes:
+  - type: logic_error
+    summary: "前端重试机制过于激进，加剧了并发竞争"
+  - type: insufficient_testing
+    summary: "缺乏并发场景的集成测试"
+matched_rules: ["R03"]
 
 # === Review 关联 ===
 related_reviews:
@@ -248,8 +299,15 @@ related_reviews:
 ### 现象
 [用户视角的问题表现]
 
-### 根本原因
-[技术层面的根因分析]
+### 根本原因 (Primary Cause)
+[直接导致问题的技术根因]
+
+**引入 Commit**: `hash` (Title)
+**引入原因分析**: [分析引入该代码时的上下文/意图]
+
+### 次要原因 (Secondary Causes)
+- [诱因 1]
+- [环境因素/配置问题]
 
 ### 触发条件
 [什么情况下会触发此问题]

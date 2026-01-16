@@ -195,7 +195,7 @@ osascript -e 'display notification "所有任务已完成并合并！" with titl
 
 ### Step 1: 分析任务
 
-1. 探索代码库，理解问题背景
+1. 探索代码库，理解问题背景 (推荐使用 LSP `definition`/`references` 深入分析依赖)
 2. 如有 additionalDirectories，参考相关项目实现
 3. 识别可并行执行的子任务
 4. **判断任务类型**（调研型 / 开发型 / 混合型）
